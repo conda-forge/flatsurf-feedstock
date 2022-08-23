@@ -13,7 +13,7 @@ cxx_compiler:
 cxx_compiler_version:
 - '14'
 fmt:
-- '8'
+- '9'
 gmp:
 - '6'
 libeantic:
