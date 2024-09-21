@@ -11,7 +11,7 @@ channel_targets:
 cxx_compiler:
 - gxx
 cxx_compiler_version:
-- '12'
+- '13'
 docker_image:
 - quay.io/condaforge/linux-anvil-cos7-x86_64
 fmt:
@@ -19,6 +19,8 @@ fmt:
 gmp:
 - '6'
 libboost_devel:
+- '1.84'
+libboost_headers:
 - '1.84'
 libeantic:
 - '2'
@@ -36,8 +38,6 @@ python:
 - 3.10.* *_cpython
 - 3.11.* *_cpython
 - 3.12.* *_cpython
-- 3.8.* *_cpython
-- 3.9.* *_73_pypy
 - 3.9.* *_cpython
 target_platform:
 - linux-64
