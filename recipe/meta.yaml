@@ -1,5 +1,5 @@
 {% set name = "flatsurf" %}
-{% set version = "3.15.0" %}
+{% set version = "3.15.1" %}
 
 package:
   name: {{ name|lower }}
@@ -7,7 +7,7 @@ package:
 
 source:
   url: https://github.com/flatsurf/{{ name }}/releases/download/{{ version }}/{{ name }}-{{ version }}.tar.gz
-  sha256: b17cc8b6f6348520566ed933e58f217f5fc974c14e3f21a3402f9097076b2846
+  sha256: e49dfa818550eb2aec727d1a16451db8fd79b211563acebaf41ab096b7dd2229
 
 build:
   number: 0
@@ -91,7 +91,7 @@ outputs:
         # https://github.com/conda/conda-build/issues/3478
         - {{ pin_subpackage("libflatsurf") }}
     test:
-      requires:  # [osx]
+      requires:   # [osx]
         # Work around https://github.com/conda-forge/cppyy-feedstock/issues/78 on the CI machines.
         - libcxx<17  # [osx]
       imports:
