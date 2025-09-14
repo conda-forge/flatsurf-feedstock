@@ -1,0 +1,413 @@
+From 22d88f7fb2761e4c04a2e391d9c2eaab89514d55 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Julian=20R=C3=BCth?= <julian.rueth@fsfe.org>
+Date: Mon, 15 Sep 2025 00:53:57 +0300
+Subject: [PATCH] Make compatible with fmt=11
+
+---
+ doc/news/fmt11.rst                            |    8 +
+ libflatsurf/configure.ac                      |   10 +-
+ libflatsurf/flatsurf/fmt.hpp                  |    6 +
+ libflatsurf/src/chain.cc                      |    1 +
+ libflatsurf/src/collapsed_half_edge.cc        |    3 +-
+ .../src/combinatorial_deformation_relation.cc |    2 +-
+ libflatsurf/src/contour_component_state.cc    |    3 +-
+ libflatsurf/src/contour_decomposition.cc      |    3 +-
+ libflatsurf/src/edge_set.cc                   |    3 +-
+ .../src/flat_triangulation_collapsed.cc       |    4 +-
+ .../src/flat_triangulation_combinatorial.cc   |    3 +-
+ libflatsurf/src/flow_component.cc             |    1 +
+ libflatsurf/src/flow_decomposition_state.cc   |    3 +-
+ libflatsurf/src/half_edge_set.cc              |    3 +-
+ libflatsurf/src/indexed_set.cc                |    3 +-
+ .../src/interval_exchange_transformation.cc   |    3 +-
+ libflatsurf/src/lengths.cc                    |    3 +-
+ libflatsurf/src/path.cc                       |    3 +-
+ .../src/saddle_connections_iterator.cc        |    2 +-
+ libflatsurf/src/vector.cc                     |    3 +-
+ 22 files changed, 3267 insertions(+), 3202 deletions(-)
+ create mode 100644 doc/news/fmt11.rst
+
+diff --git a/doc/news/fmt11.rst b/doc/news/fmt11.rst
+new file mode 100644
+index 00000000..3949aeee
+--- /dev/null
++++ b/doc/news/fmt11.rst
+@@ -0,0 +1,8 @@
++**Removed:**
++
++* Removed support for fmt 6.
++
++
++**Fixed:**
++
++* Fixed compatibility with fmt 11.
+diff --git a/libflatsurf/configure.ac b/libflatsurf/configure.ac
+index 61655b2d..dabdad41 100644
+--- a/libflatsurf/configure.ac
++++ b/libflatsurf/configure.ac
+@@ -41,11 +41,11 @@ AX_CXX_COMPILE_STDCXX(17)
+ AC_CHECK_HEADERS([boost/type_traits.hpp], , AC_MSG_ERROR([boost headers not found]))
+ 
+ AC_CHECK_HEADERS([fmt/format.h], , AC_MSG_ERROR([fmt headers not found]))
+-AX_CXX_CHECK_LIB([fmt], [fmt::v6::getpagesize()], , [
+-  AX_CXX_CHECK_LIB([fmt], [fmt::v7::getpagesize()], , [
+-    AX_CXX_CHECK_LIB([fmt], [fmt::v8::report_system_error(int code=0, const char* message=nullptr)], , [
+-      AX_CXX_CHECK_LIB([fmt], [fmt::v9::report_system_error(int code=0, const char* message=nullptr)], , [
+-        AX_CXX_CHECK_LIB([fmt], [fmt::v10::report_system_error(int code=0, const char* message=nullptr)], , [AC_MSG_ERROR([fmt library not found])], [-lfmt])
++AX_CXX_CHECK_LIB([fmt], [fmt::v7::getpagesize()], , [
++  AX_CXX_CHECK_LIB([fmt], [fmt::v8::report_system_error(int code=0, const char* message=nullptr)], , [
++    AX_CXX_CHECK_LIB([fmt], [fmt::v9::report_system_error(int code=0, const char* message=nullptr)], , [
++      AX_CXX_CHECK_LIB([fmt], [fmt::v10::report_system_error(int code=0, const char* message=nullptr)], , [
++        AX_CXX_CHECK_LIB([fmt], [fmt::v11::report_system_error(int code=0, const char* message=nullptr)], , [AC_MSG_ERROR([fmt library not found])], [-lfmt])
+       ], [-lfmt])
+     ], [-lfmt])
+   ], [-lfmt])
+diff --git a/libflatsurf/flatsurf/fmt.hpp b/libflatsurf/flatsurf/fmt.hpp
+index 153c02c4..eaa25708 100644
+--- a/libflatsurf/flatsurf/fmt.hpp
++++ b/libflatsurf/flatsurf/fmt.hpp
+@@ -31,6 +31,7 @@
+ #define LIBFLATSURF_FMT_HPP
+ 
+ #include <fmt/core.h>
++#include <fmt/ranges.h>
+ 
+ #include <sstream>
+ 
+@@ -109,4 +110,9 @@ struct fmt::formatter<::flatsurf::Path<Surface>> : ::flatsurf::GenericFormatter<
+ template <typename Surface>
+ struct fmt::formatter<::flatsurf::PathIterator<Surface>> : ::flatsurf::GenericFormatter<::flatsurf::PathIterator<Surface>> {};
+ 
++// Disable automatic formatter that fmt provides for ranges.
++// We provide our own formatter and do not want the generic formatter (that
++// produces compile errors complaining about ambiguous candidates.)
++template <typename Surface> struct fmt::is_range<flatsurf::Path<Surface>, char> : std::false_type {};
++
+ #endif
+diff --git a/libflatsurf/src/chain.cc b/libflatsurf/src/chain.cc
+index 830d4e83..8ee37936 100644
+--- a/libflatsurf/src/chain.cc
++++ b/libflatsurf/src/chain.cc
+@@ -23,6 +23,7 @@
+ #include <flint/fmpz_vec.h>
+ #include <fmt/format.h>
+ #include <fmt/ostream.h>
++#include <fmt/ranges.h>
+ #include <gmp.h>
+ #include <gmpxx.h>
+ 
+diff --git a/libflatsurf/src/collapsed_half_edge.cc b/libflatsurf/src/collapsed_half_edge.cc
+index dfc8792b..0b02b16e 100644
+--- a/libflatsurf/src/collapsed_half_edge.cc
++++ b/libflatsurf/src/collapsed_half_edge.cc
+@@ -1,7 +1,7 @@
+ /**********************************************************************
+  *  This file is part of flatsurf.
+  *
+- *        Copyright (C) 2019 Julian Rüth
++ *        Copyright (C) 2019-2025 Julian Rüth
+  *
+  *  Flatsurf is free software: you can redistribute it and/or modify
+  *  it under the terms of the GNU General Public License as published by
+@@ -20,6 +20,7 @@
+ #include "impl/collapsed_half_edge.hpp"
+ 
+ #include <fmt/format.h>
++#include <fmt/ranges.h>
+ 
+ #include <ostream>
+ 
+diff --git a/libflatsurf/src/combinatorial_deformation_relation.cc b/libflatsurf/src/combinatorial_deformation_relation.cc
+index be0b2b75..e723ca96 100644
+--- a/libflatsurf/src/combinatorial_deformation_relation.cc
++++ b/libflatsurf/src/combinatorial_deformation_relation.cc
+@@ -1,7 +1,7 @@
+ /**********************************************************************
+  *  This file is part of flatsurf.
+  *
+- *        Copyright (C) 2022 Julian Rüth
++ *        Copyright (C) 2022-2025 Julian Rüth
+  *
+  *  Flatsurf is free software: you can redistribute it and/or modify
+  *  it under the terms of the GNU General Public License as published by
+diff --git a/libflatsurf/src/contour_component_state.cc b/libflatsurf/src/contour_component_state.cc
+index 051e9f0a..0cc6c58a 100644
+--- a/libflatsurf/src/contour_component_state.cc
++++ b/libflatsurf/src/contour_component_state.cc
+@@ -1,7 +1,7 @@
+ /**********************************************************************
+  *  This file is part of flatsurf.
+  *
+- *        Copyright (C) 2020 Julian Rüth
++ *        Copyright (C) 2020-2025 Julian Rüth
+  *
+  *  Flatsurf is free software: you can redistribute it and/or modify
+  *  it under the terms of the GNU General Public License as published by
+@@ -20,6 +20,7 @@
+ #include "impl/contour_component_state.hpp"
+ 
+ #include <fmt/format.h>
++#include <fmt/ranges.h>
+ 
+ #include <ostream>
+ #include <unordered_set>
+diff --git a/libflatsurf/src/contour_decomposition.cc b/libflatsurf/src/contour_decomposition.cc
+index 0eaa2ae6..4acff5be 100644
+--- a/libflatsurf/src/contour_decomposition.cc
++++ b/libflatsurf/src/contour_decomposition.cc
+@@ -1,7 +1,7 @@
+ /**********************************************************************
+  *  This file is part of flatsurf.
+  *
+- *        Copyright (C) 2019-2020 Julian Rüth
++ *        Copyright (C) 2019-2025 Julian Rüth
+  *
+  *  Flatsurf is free software: you can redistribute it and/or modify
+  *  it under the terms of the GNU General Public License as published by
+@@ -19,6 +19,7 @@
+ 
+ #include <fmt/format.h>
+ #include <fmt/ostream.h>
++#include <fmt/ranges.h>
+ 
+ #include <ostream>
+ #include <vector>
+diff --git a/libflatsurf/src/edge_set.cc b/libflatsurf/src/edge_set.cc
+index 3e3e0f09..6c83119c 100644
+--- a/libflatsurf/src/edge_set.cc
++++ b/libflatsurf/src/edge_set.cc
+@@ -1,7 +1,7 @@
+ /**********************************************************************
+  *  This file is part of flatsurf.
+  *
+- *        Copyright (C) 2020 Julian Rüth
++ *        Copyright (C) 2020-2025 Julian Rüth
+  *
+  *  Flatsurf is free software: you can redistribute it and/or modify
+  *  it under the terms of the GNU General Public License as published by
+@@ -20,6 +20,7 @@
+ #include "../flatsurf/edge_set.hpp"
+ 
+ #include <fmt/format.h>
++#include <fmt/ranges.h>
+ 
+ #include <ostream>
+ 
+diff --git a/libflatsurf/src/flat_triangulation_collapsed.cc b/libflatsurf/src/flat_triangulation_collapsed.cc
+index ebbb7dbf..f8bb5b92 100644
+--- a/libflatsurf/src/flat_triangulation_collapsed.cc
++++ b/libflatsurf/src/flat_triangulation_collapsed.cc
+@@ -1,7 +1,7 @@
+ /**********************************************************************
+  *  This file is part of flatsurf.
+  *
+- *        Copyright (C) 2019-2022 Julian Rüth
++ *        Copyright (C) 2019-2025 Julian Rüth
+  *
+  *  Flatsurf is free software: you can redistribute it and/or modify
+  *  it under the terms of the GNU General Public License as published by
+@@ -21,6 +21,8 @@
+ 
+ #include <fmt/format.h>
+ #include <fmt/ostream.h>
++#include <fmt/ranges.h>
++
+ #include <gmpxx.h>
+ 
+ #include <boost/lexical_cast.hpp>
+diff --git a/libflatsurf/src/flat_triangulation_combinatorial.cc b/libflatsurf/src/flat_triangulation_combinatorial.cc
+index 0100c8c9..14e8c868 100644
+--- a/libflatsurf/src/flat_triangulation_combinatorial.cc
++++ b/libflatsurf/src/flat_triangulation_combinatorial.cc
+@@ -1,7 +1,7 @@
+ /**********************************************************************
+  *  This file is part of flatsurf.
+  *
+- *        Copyright (C) 2019-2024 Julian Rüth
++ *        Copyright (C) 2019-2025 Julian Rüth
+  *
+  *  Flatsurf is free software: you can redistribute it and/or modify
+  *  it under the terms of the GNU General Public License as published by
+@@ -20,6 +20,7 @@
+ #include "../flatsurf/flat_triangulation_combinatorial.hpp"
+ 
+ #include <fmt/format.h>
++#include <fmt/ranges.h>
+ 
+ #include <ostream>
+ #include <unordered_map>
+diff --git a/libflatsurf/src/flow_component.cc b/libflatsurf/src/flow_component.cc
+index de1cf524..b414ffdd 100644
+--- a/libflatsurf/src/flow_component.cc
++++ b/libflatsurf/src/flow_component.cc
+@@ -20,6 +20,7 @@
+ #include "../flatsurf/flow_component.hpp"
+ 
+ #include <fmt/format.h>
++#include <fmt/ranges.h>
+ 
+ #include <boost/logic/tribool.hpp>
+ #include <intervalxt/component.hpp>
+diff --git a/libflatsurf/src/flow_decomposition_state.cc b/libflatsurf/src/flow_decomposition_state.cc
+index 7055dc31..e81e9da4 100644
+--- a/libflatsurf/src/flow_decomposition_state.cc
++++ b/libflatsurf/src/flow_decomposition_state.cc
+@@ -1,7 +1,7 @@
+ /**********************************************************************
+  *  This file is part of flatsurf.
+  *
+- *        Copyright (C) 2019-2022 Julian Rüth
++ *        Copyright (C) 2019-2025 Julian Rüth
+  *
+  *  Flatsurf is free software: you can redistribute it and/or modify
+  *  it under the terms of the GNU General Public License as published by
+@@ -21,6 +21,7 @@
+ 
+ #include <fmt/format.h>
+ #include <fmt/ostream.h>
++#include <fmt/ranges.h>
+ 
+ #include <intervalxt/dynamical_decomposition.hpp>
+ #include <intervalxt/interval_exchange_transformation.hpp>
+diff --git a/libflatsurf/src/half_edge_set.cc b/libflatsurf/src/half_edge_set.cc
+index 885dfec4..814c40bb 100644
+--- a/libflatsurf/src/half_edge_set.cc
++++ b/libflatsurf/src/half_edge_set.cc
+@@ -1,7 +1,7 @@
+ /**********************************************************************
+  *  This file is part of flatsurf.
+  *
+- *        Copyright (C) 2020 Julian Rüth
++ *        Copyright (C) 2020-2025 Julian Rüth
+  *
+  *  Flatsurf is free software: you can redistribute it and/or modify
+  *  it under the terms of the GNU General Public License as published by
+@@ -20,6 +20,7 @@
+ #include "../flatsurf/half_edge_set.hpp"
+ 
+ #include <fmt/format.h>
++#include <fmt/ranges.h>
+ 
+ #include <ostream>
+ 
+diff --git a/libflatsurf/src/indexed_set.cc b/libflatsurf/src/indexed_set.cc
+index eb6f7693..51f3b599 100644
+--- a/libflatsurf/src/indexed_set.cc
++++ b/libflatsurf/src/indexed_set.cc
+@@ -1,7 +1,7 @@
+ /**********************************************************************
+  *  This file is part of flatsurf.
+  *
+- *        Copyright (C) 2020 Julian Rüth
++ *        Copyright (C) 2020-2025 Julian Rüth
+  *
+  *  Flatsurf is free software: you can redistribute it and/or modify
+  *  it under the terms of the GNU General Public License as published by
+@@ -20,6 +20,7 @@
+ #include "impl/indexed_set.hpp"
+ 
+ #include <fmt/format.h>
++#include <fmt/ranges.h>
+ 
+ #include <ostream>
+ 
+diff --git a/libflatsurf/src/interval_exchange_transformation.cc b/libflatsurf/src/interval_exchange_transformation.cc
+index a9af400f..e6412ad9 100644
+--- a/libflatsurf/src/interval_exchange_transformation.cc
++++ b/libflatsurf/src/interval_exchange_transformation.cc
+@@ -1,7 +1,7 @@
+ /**********************************************************************
+  *  This file is part of flatsurf.
+  *
+- *        Copyright (C) 2019-2022 Julian Rüth
++ *        Copyright (C) 2019-2025 Julian Rüth
+  *
+  *  Flatsurf is free software: you can redistribute it and/or modify
+  *  it under the terms of the GNU General Public License as published by
+@@ -23,6 +23,7 @@
+ #include <vector>
+ 
+ #include <fmt/format.h>
++#include <fmt/ranges.h>
+ 
+ #include <boost/type_erasure/any_cast.hpp>
+ #include <intervalxt/forward.hpp>
+diff --git a/libflatsurf/src/lengths.cc b/libflatsurf/src/lengths.cc
+index 58850b7c..795dbb28 100644
+--- a/libflatsurf/src/lengths.cc
++++ b/libflatsurf/src/lengths.cc
+@@ -1,7 +1,7 @@
+ /**********************************************************************
+  *  This file is part of flatsurf.
+  *
+- *        Copyright (C) 2019-2022 Julian Rüth
++ *        Copyright (C) 2019-2025 Julian Rüth
+  *
+  *  Flatsurf is free software: you can redistribute it and/or modify
+  *  it under the terms of the GNU General Public License as published by
+@@ -23,6 +23,7 @@
+ 
+ #include <fmt/format.h>
+ #include <fmt/ostream.h>
++#include <fmt/ranges.h>
+ 
+ #include <exact-real/element.hpp>
+ #include <exact-real/integer_ring.hpp>
+diff --git a/libflatsurf/src/path.cc b/libflatsurf/src/path.cc
+index 782bd0c4..3f7ef66b 100644
+--- a/libflatsurf/src/path.cc
++++ b/libflatsurf/src/path.cc
+@@ -1,7 +1,7 @@
+ /**********************************************************************
+  *  This file is part of flatsurf.
+  *
+- *        Copyright (C) 2020-2022 Julian Rüth
++ *        Copyright (C) 2020-2025 Julian Rüth
+  *
+  *  Flatsurf is free software: you can redistribute it and/or modify
+  *  it under the terms of the GNU General Public License as published by
+@@ -20,6 +20,7 @@
+ #include "../flatsurf/path.hpp"
+ 
+ #include <fmt/format.h>
++#include <fmt/ranges.h>
+ 
+ #include <algorithm>
+ #include <ostream>
+diff --git a/libflatsurf/src/saddle_connections_iterator.cc b/libflatsurf/src/saddle_connections_iterator.cc
+index 9963603f..8f43ca6b 100644
+--- a/libflatsurf/src/saddle_connections_iterator.cc
++++ b/libflatsurf/src/saddle_connections_iterator.cc
+@@ -1,7 +1,7 @@
+ /**********************************************************************
+  *  This file is part of flatsurf.
+  *
+- *        Copyright (C) 2020-2021 Julian Rüth
++ *        Copyright (C) 2020-2025 Julian Rüth
+  *
+  *  Flatsurf is free software: you can redistribute it and/or modify
+  *  it under the terms of the GNU General Public License as published by
+diff --git a/libflatsurf/src/vector.cc b/libflatsurf/src/vector.cc
+index 0ee4facf..367734ca 100644
+--- a/libflatsurf/src/vector.cc
++++ b/libflatsurf/src/vector.cc
+@@ -1,7 +1,7 @@
+ /**********************************************************************
+  *  This file is part of flatsurf.
+  *
+- *        Copyright (C) 2019-2020 Julian Rüth
++ *        Copyright (C) 2019-2025 Julian Rüth
+  *
+  *  Flatsurf is free software: you can redistribute it and/or modify
+  *  it under the terms of the GNU General Public License as published by
+@@ -21,6 +21,7 @@
+ 
+ #include <fmt/format.h>
+ #include <fmt/ostream.h>
++#include <fmt/ranges.h>
+ 
+ #include <boost/type_traits/is_detected.hpp>
+ #include <boost/type_traits/is_detected_exact.hpp>
+-- 
+2.51.0
+
