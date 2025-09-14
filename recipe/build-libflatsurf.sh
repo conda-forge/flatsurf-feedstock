@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -ex
 
+# Regenerate configure since our patches touch configure.ac
+autoreconf -ivf
+
 if [[ "$target_platform" == osx* ]]; then
     CXXFLAGS="$CXXFLAGS -fno-common"
     CXXFLAGS="$CXXFLAGS -std=c++17"
