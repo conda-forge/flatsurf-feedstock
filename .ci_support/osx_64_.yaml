@@ -13,9 +13,9 @@ channel_targets:
 cxx_compiler:
 - clangxx
 cxx_compiler_version:
-- '18'
+- '19'
 fmt:
-- '10'
+- '11.2'
 gmp:
 - '6'
 libboost_devel:
@@ -29,7 +29,7 @@ libexactreal:
 libflatsurf:
 - '3'
 libflint:
-- '3.2'
+- '3.3'
 libintervalxt:
 - '3'
 macos_machine:
@@ -42,6 +42,6 @@ python:
 - 3.10.* *_cpython
 - 3.11.* *_cpython
 - 3.12.* *_cpython
-- 3.9.* *_cpython
+- 3.13.* *_cp313
 target_platform:
 - osx-64
