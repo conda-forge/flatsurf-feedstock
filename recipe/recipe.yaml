@@ -1,12 +1,15 @@
-{% set name = "flatsurf" %}
-{% set version = "3.15.2" %}
+schema_version: 1
 
-package:
-  name: {{ name|lower }}
-  version: {{ version }}
+context:
+  name: flatsurf
+  version: "3.15.2"
+
+recipe:
+  name: ${{ name|lower }}
+  version: ${{ version }}
 
 source:
-  url: https://github.com/flatsurf/{{ name }}/releases/download/{{ version }}/{{ name }}-{{ version }}.tar.gz
+  url: https://github.com/flatsurf/${{ name }}/releases/download/${{ version }}/${{ name }}-${{ version }}.tar.gz
   sha256: 3974c53de4dc5e4739659ae7e4c32a313d20ace7bd7b617e2a24575f50b62b29
   patches:
     # Upstream https://github.com/flatsurf/flatsurf/pull/354
@@ -15,21 +18,22 @@ source:
 build:
   number: 7
   # dependency libeantic is not available for Windows on conda-forge yet
-  skip: true  # [win]
+  skip: win
 
 outputs:
-  - name: libflatsurf
-    script: build-libflatsurf.sh
-    run_exports:
-      - {{ pin_subpackage("libflatsurf") }}
+  - package:
+      name: libflatsurf
+    build:
+      script:
+        file: build-libflatsurf.sh
     requirements:
       build:
         - libtool
         - automake
         - make
         - gnuconfig
-        - {{ compiler('cxx') }}
-        - {{ stdlib("c") }}
+        - ${{ compiler('cxx') }}
+        - ${{ stdlib("c") }}
       host:
         # We only need the libboost-headers at compile time. However, since we
         # use bits of boost in our API, code built against libflatsurf must be
@@ -44,22 +48,29 @@ outputs:
         - libexactreal
         - libeantic
         - gmpxxll
-    test:
-      commands:
-        - test -f $PREFIX/include/flatsurf/flatsurf.hpp
-        - test -f $PREFIX/lib/libflatsurf${SHLIB_EXT}
-  - name: pyflatsurf
-    script: build-pyflatsurf.sh
+      run_exports:
+        - ${{ pin_subpackage("libflatsurf") }}
+    tests:
+      - script:
+          - test -f $PREFIX/include/flatsurf/flatsurf.hpp
+          - test -f $PREFIX/lib/libflatsurf${SHLIB_EXT}
+  - package:
+      name: pyflatsurf
+    build:
+      script:
+        file: build-pyflatsurf.sh
     requirements:
       build:
-        - python                              # [build_platform != target_platform]
-        - cross-python_{{ target_platform }}  # [build_platform != target_platform]
+        - if: build_platform != target_platform
+          then:
+            - python
+            - cross-python_${{ target_platform }}
         - libtool
         - automake
         - make
         - gnuconfig
-        - {{ compiler('cxx') }}
-        - {{ stdlib("c") }}
+        - ${{ compiler('cxx') }}
+        - ${{ stdlib("c") }}
       host:
         # Note that the libboost-devel from libflatsurf forces these headers to be
         # compatible with ones used when building libflatsurf.
@@ -71,7 +82,7 @@ outputs:
         - pytest
         - pyexactreal
         - pyintervalxt
-        - {{ pin_subpackage("libflatsurf") }}
+        - ${{ pin_subpackage("libflatsurf") }}
       run:
         # cppyy dynamically compiles C++ wrappers at runtime, therefore we need C++ headers of boost.
         # Note that the libboost-devel from libflatsurf forces these headers to be
@@ -85,18 +96,20 @@ outputs:
         - pyintervalxt
         # A subpackage does not see the run_exports of another subpackage:
         # https://github.com/conda/conda-build/issues/3478
-        - {{ pin_subpackage("libflatsurf") }}
-    test:             # [build_platform == target_platform]
-      imports:        # [build_platform == target_platform]
-        - pyflatsurf  # [build_platform == target_platform]
+        - ${{ pin_subpackage("libflatsurf") }}
+    tests:
+      - python:
+          imports:
+            - if: build_platform == target_platform
+              then: pyflatsurf
+          pip_check: false
 
 about:
-  home: https://github.com/flatsurf/flatsurf
   license: GPL-3.0-or-later
-  license_family: GPL
   license_file: COPYING
   summary: Algorithms on Flat Triangulations
-  dev_url: https://github.com/flatsurf/flatsurf
+  homepage: https://github.com/flatsurf/flatsurf
+  repository: https://github.com/flatsurf/flatsurf
 
 extra:
   recipe-maintainers:
