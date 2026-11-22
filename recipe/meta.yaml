@@ -19,17 +19,15 @@ build:
 
 outputs:
   - name: libflatsurf
-    script: build-libflatsurf.sh  # [not win]
-    script: build-libflatsurf.bat  # [win]
+    script: build-libflatsurf.sh
     run_exports:
       - {{ pin_subpackage("libflatsurf") }}
     requirements:
       build:
-        - libtool    # [unix]
-        - automake   # [unix]
-        - make       # [unix]
-        - gnuconfig  # [unix]
-        - autotools_clang_conda  # [win]
+        - libtool
+        - automake
+        - make
+        - gnuconfig
         - {{ compiler('cxx') }}
         - {{ stdlib("c") }}
       host:
@@ -40,8 +38,7 @@ outputs:
         # in a compatible version.
         - libboost-devel
         - fmt
-        - gmp   # [unix]
-        - mpir  # [win]
+        - gmp
         - libflint
         - libintervalxt
         - libexactreal
@@ -49,20 +46,18 @@ outputs:
         - gmpxxll
     test:
       commands:
-        - test -f $PREFIX/include/flatsurf/flatsurf.hpp  # [unix]
-        - test -f $PREFIX/lib/libflatsurf${SHLIB_EXT}      # [unix]
+        - test -f $PREFIX/include/flatsurf/flatsurf.hpp
+        - test -f $PREFIX/lib/libflatsurf${SHLIB_EXT}
   - name: pyflatsurf
-    script: build-pyflatsurf.sh  # [not win]
-    script: bld-pyflatsurf.bat  # [win]
+    script: build-pyflatsurf.sh
     requirements:
       build:
         - python                              # [build_platform != target_platform]
         - cross-python_{{ target_platform }}  # [build_platform != target_platform]
-        - libtool   # [unix]
-        - automake  # [unix]
-        - make      # [unix]
-        - autotools_clang_conda  # [win]
-        - gnuconfig  # [unix]
+        - libtool
+        - automake
+        - make
+        - gnuconfig
         - {{ compiler('cxx') }}
         - {{ stdlib("c") }}
       host:
