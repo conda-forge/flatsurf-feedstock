@@ -1,0 +1,38 @@
+From 823e8570a0edecf12fed63d8caa41a70729be1be Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Julian=20R=C3=BCth?= <julian.rueth@fsfe.org>
+Date: Mon, 1 Dec 2025 16:19:08 +0200
+Subject: [PATCH] Fixed compatibility with fmt 12
+
+---
+ doc/news/fmt12.rst       | 3 +++
+ libflatsurf/configure.ac | 4 +++-
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+ create mode 100644 doc/news/fmt12.rst
+
+diff --git a/doc/news/fmt12.rst b/doc/news/fmt12.rst
+new file mode 100644
+index 00000000..0c58b4f7
+--- /dev/null
++++ b/doc/news/fmt12.rst
+@@ -0,0 +1,3 @@
++**Fixed:**
++
++* Fixed compatibility with fmt 12.
+diff --git a/libflatsurf/configure.ac b/libflatsurf/configure.ac
+index dabdad41..052cd73e 100644
+--- a/libflatsurf/configure.ac
++++ b/libflatsurf/configure.ac
+@@ -45,7 +45,9 @@ AX_CXX_CHECK_LIB([fmt], [fmt::v7::getpagesize()], , [
+   AX_CXX_CHECK_LIB([fmt], [fmt::v8::report_system_error(int code=0, const char* message=nullptr)], , [
+     AX_CXX_CHECK_LIB([fmt], [fmt::v9::report_system_error(int code=0, const char* message=nullptr)], , [
+       AX_CXX_CHECK_LIB([fmt], [fmt::v10::report_system_error(int code=0, const char* message=nullptr)], , [
+-        AX_CXX_CHECK_LIB([fmt], [fmt::v11::report_system_error(int code=0, const char* message=nullptr)], , [AC_MSG_ERROR([fmt library not found])], [-lfmt])
++        AX_CXX_CHECK_LIB([fmt], [fmt::v11::report_system_error(int code=0, const char* message=nullptr)], , [
++          AX_CXX_CHECK_LIB([fmt], [fmt::v12::report_system_error(int code=0, const char* message=nullptr)], , [AC_MSG_ERROR([fmt library not found])], [-lfmt])
++        ], [-lfmt])
+       ], [-lfmt])
+     ], [-lfmt])
+   ], [-lfmt])
+-- 
+2.56.1
+
