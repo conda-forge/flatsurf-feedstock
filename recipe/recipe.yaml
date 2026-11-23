@@ -16,7 +16,7 @@ source:
     - 0001-Fixed-compatibility-with-fmt-12.patch
 
 build:
-  number: 8
+  number: 9
   # dependency libeantic is not available for Windows on conda-forge yet
   skip: win
 
